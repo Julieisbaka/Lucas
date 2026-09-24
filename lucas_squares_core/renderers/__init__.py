@@ -11,7 +11,7 @@ from .svg import render_svg
 
 
 # This compatibility dispatcher mirrors the established renderer parameters.
-# pylint: disable=too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-arguments
 def write_output(
     svg: str,
     squares: list[Square],

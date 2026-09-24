@@ -15,7 +15,7 @@ from ..geometry import (
 
 
 # Lazy import keeps SVG-only use independent of ReportLab.
-# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,import-outside-toplevel
+# pylint: disable=too-many-arguments,too-many-locals,import-outside-toplevel
 def render_pdf(
     squares: list[Square],
     output: Path,
