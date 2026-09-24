@@ -7,8 +7,8 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from lucas_squares import (TARGET_RATIO, bounds, choose_squares, layout_score,
-                           lucas_numbers, render_svg)
+from lucas_squares import (TARGET_RATIO, bounds, choose_squares, filler_rectangles,
+                           layout_score, lucas_numbers, render_svg)
 
 
 class LucasSquareTests(unittest.TestCase):
@@ -67,17 +67,46 @@ class LucasSquareTests(unittest.TestCase):
             self.assertTrue(horizontal_contact or vertical_contact,
                             (previous, current))
 
+    def test_fillers_cover_only_unoccupied_area(self):
+        for layout in ("turning", "fit"):
+            for count in (1, 2, 4, 8, 12):
+                with self.subTest(layout=layout, count=count):
+                    squares = choose_squares(count, layout, "exact")
+                    width, height = bounds(squares)
+                    fillers = filler_rectangles(squares)
+                    self.assertEqual(sum(w * h for _, _, w, h in fillers),
+                                     width * height - sum(s.size ** 2 for s in squares))
+                    for i, (x, y, w, h) in enumerate(fillers):
+                        self.assertTrue(0 <= x < x + w <= width)
+                        self.assertTrue(0 <= y < y + h <= height)
+                        others = [(s.x, s.y, s.size, s.size) for s in squares]
+                        others += fillers[i + 1:]
+                        for ox, oy, ow, oh in others:
+                            self.assertFalse(x < ox + ow and ox < x + w and
+                                             y < oy + oh and oy < y + h)
+
     def test_svg_physical_size_squares_and_optional_labels(self):
         squares = choose_squares(5, "turning", "exact")
         ns = "{http://www.w3.org/2000/svg}"
         for labeled in (False, True):
-            root = ET.fromstring(render_svg(squares, labeled))
-            self.assertEqual((root.attrib["width"], root.attrib["height"]),
-                             ("12in", "9in"))
-            self.assertEqual(root.attrib["viewBox"], "0 0 1200 900")
-            self.assertEqual(len(root.findall(f"{ns}rect")), len(squares) + 1)
-            self.assertEqual(bool(root.findall(f"{ns}text")), labeled)
-            self.assertFalse(root.findall(f"{ns}path"))
+            for alignment in ("seamless", "edges"):
+                root = ET.fromstring(render_svg(squares, labeled, alignment))
+                self.assertEqual((root.attrib["width"], root.attrib["height"]),
+                                 ("12in", "9in"))
+                self.assertEqual(root.attrib["viewBox"], "0 0 1200 900")
+                geometry = root.find(f"{ns}g")
+                self.assertIsNotNone(geometry)
+                self.assertIn("scale(", geometry.attrib["transform"])
+                lucas = geometry.find(f"{ns}g[@id='lucas']")
+                self.assertEqual(len(lucas.findall(f"{ns}rect")), len(squares))
+                self.assertEqual(lucas[0].attrib["width"], str(squares[0].size))
+                fillers = geometry.find(f"{ns}g[@id='fillers']")
+                self.assertEqual(fillers is not None, alignment == "seamless")
+                if fillers is not None:
+                    self.assertEqual(len(fillers.findall(f"{ns}rect")),
+                                     len(filler_rectangles(squares)))
+                self.assertEqual(bool(root.findall(f"{ns}text")), labeled)
+                self.assertFalse(root.findall(f".//{ns}path"))
 
     def test_cli_writes_svg_and_reports_selected_count(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -85,7 +114,7 @@ class LucasSquareTests(unittest.TestCase):
             result = subprocess.run(
                 [sys.executable, str(Path(__file__).with_name("lucas_squares.py")),
                  "--iterations", "6", "--layout", "fit", "--count-mode", "auto",
-                 "--labels", "--output", str(output)],
+                 "--alignment", "edges", "--labels", "--output", str(output)],
                 capture_output=True, text=True, check=True,
             )
             self.assertIn("squares; footprint", result.stdout)

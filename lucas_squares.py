@@ -124,8 +124,42 @@ def choose_squares(iterations: int, layout: str, count_mode: str) -> list[Square
     raise ValueError("count_mode must be 'exact' or 'auto'")
 
 
-def render_svg(squares: list[Square], labels: bool = False) -> str:
-    """Scale the footprint uniformly, center it, and render square outlines."""
+def filler_rectangles(squares: list[Square]) -> list[tuple[int, int, int, int]]:
+    """Partition every uncovered part of the footprint into rectangles."""
+    width, height = bounds(squares)
+    xs = sorted({0, width} | {edge for s in squares for edge in (s.x, s.x + s.size)})
+    ys = sorted({0, height} | {edge for s in squares for edge in (s.y, s.y + s.size)})
+    fillers: list[tuple[int, int, int, int]] = []
+    active: dict[tuple[int, int], int] = {}
+    for y, next_y in zip(ys, ys[1:]):
+        runs: set[tuple[int, int]] = set()
+        start: int | None = None
+        for x, next_x in zip(xs, xs[1:]):
+            occupied = any(s.x <= x and next_x <= s.x + s.size and
+                           s.y <= y and next_y <= s.y + s.size for s in squares)
+            if not occupied and start is None:
+                start = x
+            if occupied and start is not None:
+                runs.add((start, x))
+                start = None
+        if start is not None:
+            runs.add((start, width))
+        for (left, right), first_y in list(active.items()):
+            if (left, right) not in runs:
+                fillers.append((left, first_y, right - left, y - first_y))
+                del active[(left, right)]
+        for run in runs:
+            active.setdefault(run, y)
+    for (left, right), first_y in active.items():
+        fillers.append((left, first_y, right - left, height - first_y))
+    return sorted(fillers)
+
+
+def render_svg(squares: list[Square], labels: bool = False,
+               alignment: str = "seamless") -> str:
+    """Render exact shared square edges; optionally fill unused footprint."""
+    if alignment not in ("seamless", "edges"):
+        raise ValueError("alignment must be 'seamless' or 'edges'")
     width, height = bounds(squares)
     scale = min((PAGE_WIDTH - 2 * MARGIN) / width,
                 (PAGE_HEIGHT - 2 * MARGIN) / height)
@@ -135,14 +169,30 @@ def render_svg(squares: list[Square], labels: bool = False) -> str:
         '<svg xmlns="http://www.w3.org/2000/svg" width="12in" height="9in" '
         'viewBox="0 0 1200 900">',
         '<rect width="1200" height="900" fill="white"/>',
+        f'<g transform="translate({left:.10f} {top:.10f}) scale({scale:.10f})">',
     ]
+    if alignment == "seamless":
+        lines.append('<g id="fillers" fill="#e8e8e8">')
+        for x, y, filler_width, filler_height in filler_rectangles(squares):
+            lines.append(f'<rect x="{x}" y="{y}" width="{filler_width}" '
+                         f'height="{filler_height}"/>')
+        lines.append('</g>')
+    lines.append('<g id="lucas" fill="none" stroke="black" '
+                 'stroke-width="1.5" vector-effect="non-scaling-stroke">')
     for square in squares:
-        x, y, side = (left + square.x * scale,
-                      top + square.y * scale, square.size * scale)
-        lines.append(f'<rect x="{x:.4f}" y="{y:.4f}" width="{side:.4f}" '
-                     f'height="{side:.4f}" fill="none" stroke="black" '
-                     f'stroke-width="1.5"/>')
+        lines.append(f'<rect x="{square.x}" y="{square.y}" '
+                     f'width="{square.size}" height="{square.size}"/>')
+    lines.append('</g>')
+    if alignment == "seamless":
+        lines.append(f'<rect width="{width}" height="{height}" fill="none" '
+                     f'stroke="black" stroke-width="1.5" '
+                     f'vector-effect="non-scaling-stroke"/>')
+    lines.append('</g>')
+    for square in squares:
+        side = square.size * scale
         if labels and side >= 15:
+            x = left + square.x * scale
+            y = top + square.y * scale
             font_size = min(side * 0.45, side * 1.35 / len(str(square.size)), 32)
             lines.append(f'<text x="{x + side / 2:.4f}" y="{y + side / 2:.4f}" '
                          f'text-anchor="middle" dominant-baseline="central" '
@@ -160,6 +210,10 @@ def main() -> None:
                         help="draw exactly N squares or choose the best ratio up to N")
     parser.add_argument("--layout", choices=("turning", "fit"), default="turning",
                         help="outward-turning arrangement or row-packed page fit")
+    parser.add_argument("--alignment", choices=("seamless", "edges"),
+                        default="seamless",
+                        help="fill gaps for a solid rectangular footprint (default), "
+                             "or draw only Lucas square edges")
     parser.add_argument("--labels", action="store_true",
                         help="print Lucas numbers inside squares when legible")
     parser.add_argument("--output", type=Path, default=Path("lucas_squares.svg"),
@@ -169,7 +223,8 @@ def main() -> None:
         squares = choose_squares(args.iterations, args.layout, args.count_mode)
     except ValueError as error:
         parser.error(str(error))
-    args.output.write_text(render_svg(squares, args.labels), encoding="utf-8")
+    args.output.write_text(render_svg(squares, args.labels, args.alignment),
+                           encoding="utf-8")
     width, height = bounds(squares)
     print(f"Wrote {args.output} ({len(squares)} squares; footprint "
           f"{width}:{height} = {width / height:.5f}; page 12:9 = {TARGET_RATIO:.5f})")
