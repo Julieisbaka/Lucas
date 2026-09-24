@@ -1,6 +1,6 @@
 # Printable Lucas squares
 
-Generate a printable SVG of squares whose side lengths follow the Lucas sequence **2, 1, 3, 4, 7, 11, …**. The generator never draws a spiral. It needs only Python 3.
+Generate a printable SVG of squares whose side lengths follow the Lucas sequence **2, 1, 3, 4, 7, 11, …**. The generator never draws a spiral. It needs only Python 3 (specifically tested with `3.8`, `3.9`, and `3.10` - other versions likely work too).
 
 By default, it creates an eight-square, 12 × 9-inch landscape SVG named `lucas_squares.svg`:
 
