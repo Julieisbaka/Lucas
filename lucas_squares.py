@@ -216,6 +216,22 @@ def filler_rectangles(squares: list[Square]) -> list[tuple[int, int, int, int]]:
     return sorted(fillers)
 
 
+def page_placement(
+    squares: list[Square], page_width_units: float, page_height_units: float,
+    margin_units: float,
+) -> tuple[float, float, float] | None:
+    """Return the uniform scale and top-left offset for a non-empty arrangement."""
+    if not squares:
+        return None
+    width, height = bounds(squares)
+    scale = min(
+        (page_width_units - 2 * margin_units) / width,
+        (page_height_units - 2 * margin_units) / height,
+    )
+    return (scale, (page_width_units - width * scale) / 2,
+            (page_height_units - height * scale) / 2)
+
+
 def render_svg(
     squares: list[Square],
     labels: bool = False,
@@ -244,12 +260,9 @@ def render_svg(
         lines.append("</svg>")
         return "\n".join(lines) + "\n"
     width, height = bounds(squares)
-    scale = min(
-        (page_width_units - 2 * margin_units) / width,
-        (page_height_units - 2 * margin_units) / height,
-    )
-    left = (page_width_units - width * scale) / 2
-    top = (page_height_units - height * scale) / 2
+    placement = page_placement(squares, page_width_units, page_height_units, margin_units)
+    assert placement is not None
+    scale, left, top = placement
     lines.extend(
         [
             f'<g transform="translate({left:.15g} {top:.15g}) scale({scale:.15g})">',
@@ -293,6 +306,106 @@ def render_svg(
             )
     lines.append("</svg>")
     return "\n".join(lines) + "\n"
+
+
+def render_png(
+    squares: list[Square], output: Path, labels: bool, alignment: str,
+    page_width: float, page_height: float, margin: float, dpi: int,
+) -> None:
+    """Render the arrangement to a PNG at the requested physical resolution."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError as error:
+        raise ValueError("PNG output requires Pillow; install requirements.txt") from error
+    if dpi <= 0:
+        raise ValueError("PNG DPI must be a positive integer")
+    pixel_width, pixel_height = round(page_width * dpi), round(page_height * dpi)
+    image = Image.new("RGB", (pixel_width, pixel_height), "white")
+    if not squares:
+        image.save(output, dpi=(dpi, dpi))
+        return
+    placement = page_placement(squares, pixel_width, pixel_height, margin * dpi)
+    assert placement is not None
+    scale, left, top = placement
+    draw = ImageDraw.Draw(image)
+    if alignment == "seamless":
+        for x, y, width, height in filler_rectangles(squares):
+            draw.rectangle((left + x * scale, top + y * scale,
+                            left + (x + width) * scale, top + (y + height) * scale),
+                           fill="#e8e8e8")
+    stroke_width = max(1, round(1.5 * dpi / DEFAULT_SVG_UNITS_PER_INCH))
+    for square in squares:
+        x, y, side = left + square.x * scale, top + square.y * scale, square.size * scale
+        draw.rectangle((x, y, x + side, y + side), outline="black", width=stroke_width)
+        if labels and side >= 15:
+            font_size = max(1, round(min(side * 0.45, side * 1.35 / len(str(square.size)), dpi * 0.32)))
+            try:
+                font = ImageFont.truetype("arial.ttf", font_size)
+            except OSError:
+                font = ImageFont.load_default()
+            draw.text((x + side / 2, y + side / 2), str(square.size), fill="black",
+                      font=font, anchor="mm")
+    if alignment == "seamless":
+        width, height = bounds(squares)
+        draw.rectangle((left, top, left + width * scale, top + height * scale),
+                       outline="black", width=stroke_width)
+    image.save(output, dpi=(dpi, dpi))
+
+
+def render_pdf(
+    squares: list[Square], output: Path, labels: bool, alignment: str,
+    page_width: float, page_height: float, margin: float,
+) -> None:
+    """Render the arrangement as a vector PDF at the requested page size."""
+    try:
+        from reportlab.lib.colors import Color, black
+        from reportlab.pdfgen.canvas import Canvas
+    except ImportError as error:
+        raise ValueError("PDF output requires reportlab; install requirements.txt") from error
+    points_per_inch = 72
+    page_width_points, page_height_points = page_width * points_per_inch, page_height * points_per_inch
+    canvas = Canvas(str(output), pagesize=(page_width_points, page_height_points))
+    if squares:
+        placement = page_placement(squares, page_width_points, page_height_points,
+                                   margin * points_per_inch)
+        assert placement is not None
+        scale, left, top = placement
+        if alignment == "seamless":
+            canvas.setFillColor(Color(0.91, 0.91, 0.91))
+            for x, y, width, height in filler_rectangles(squares):
+                canvas.rect(left + x * scale, page_height_points - top - (y + height) * scale,
+                            width * scale, height * scale, stroke=0, fill=1)
+        canvas.setStrokeColor(black)
+        canvas.setLineWidth(1.5 * points_per_inch / DEFAULT_SVG_UNITS_PER_INCH)
+        for square in squares:
+            x, y, side = left + square.x * scale, top + square.y * scale, square.size * scale
+            canvas.rect(x, page_height_points - y - side, side, side, stroke=1, fill=0)
+            if labels and side >= 15:
+                font_size = min(side * 0.45, side * 1.35 / len(str(square.size)), points_per_inch * 0.32)
+                canvas.setFont("Helvetica", font_size)
+                canvas.drawCentredString(x + side / 2,
+                                         page_height_points - y - side / 2 - font_size * 0.35,
+                                         str(square.size))
+        if alignment == "seamless":
+            width, height = bounds(squares)
+            canvas.rect(left, page_height_points - top - height * scale,
+                        width * scale, height * scale, stroke=1, fill=0)
+    canvas.save()
+
+
+def write_output(
+    svg: str, squares: list[Square], output: Path, output_format: str, labels: bool,
+    alignment: str, page_width: float, page_height: float, margin: float, dpi: int,
+) -> None:
+    """Write the selected vector or raster output format."""
+    if output_format == "svg":
+        output.write_text(svg, encoding="utf-8")
+    elif output_format == "png":
+        render_png(squares, output, labels, alignment, page_width, page_height, margin, dpi)
+    elif output_format == "pdf":
+        render_pdf(squares, output, labels, alignment, page_width, page_height, margin)
+    else:
+        raise ValueError("format must be 'svg', 'png', or 'pdf'")
 
 
 def main() -> None:
@@ -360,10 +473,21 @@ def main() -> None:
         help="print Lucas numbers inside squares when legible",
     )
     parser.add_argument(
+        "--format",
+        choices=("svg", "png", "pdf"),
+        default="svg",
+        help="output file format (default: svg)",
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=300,
+        help="PNG output resolution in dots per inch (default: 300)",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
-        default=Path("lucas_squares.svg"),
-        help="SVG file to create (default: lucas_squares.svg)",
+        help="output file to create (default: lucas_squares.FORMAT)",
     )
     args = parser.parse_args()
     try:
@@ -386,16 +510,21 @@ def main() -> None:
         )
     except ValueError as error:
         parser.error(str(error))
-    args.output.write_text(svg, encoding="utf-8")
+    output = args.output or Path(f"lucas_squares.{args.format}")
+    try:
+        write_output(svg, squares, output, args.format, args.labels, args.alignment,
+                     args.width, args.height, args.margin, args.dpi)
+    except ValueError as error:
+        parser.error(str(error))
     width, height = bounds(squares)
     if squares:
         print(
-            f"Wrote {args.output} ({len(squares)} squares; footprint "
+            f"Wrote {output} ({args.format}; {len(squares)} squares; footprint "
             f"{width}:{height} = {width / height:.5f}; page {args.width:g}:{args.height:g} "
             f"= {args.width / args.height:.5f})"
         )
     else:
-        print(f"Wrote {args.output} (0 squares; blank page)")
+        print(f"Wrote {output} ({args.format}; 0 squares; blank page)")
 
 
 if __name__ == "__main__":

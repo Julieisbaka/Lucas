@@ -249,6 +249,21 @@ class LucasSquareTests(unittest.TestCase):
             root = ET.parse(output).getroot()
             self.assertEqual(len(list(root)), 1)
 
+    def test_cli_writes_png_and_pdf(self):
+        with tempfile.TemporaryDirectory() as directory:
+            script = str(Path(__file__).parent.parent / "lucas_squares.py")
+            for output_format, signature in (("png", b"\x89PNG\r\n\x1a\n"),
+                                             ("pdf", b"%PDF-")):
+                with self.subTest(output_format=output_format):
+                    output = Path(directory) / f"art.{output_format}"
+                    result = subprocess.run(
+                        [sys.executable, script, "--iterations", "3", "--format",
+                         output_format, "--output", str(output)],
+                        capture_output=True, text=True, check=True,
+                    )
+                    self.assertIn(f"({output_format}; 3 squares", result.stdout)
+                    self.assertTrue(output.read_bytes().startswith(signature))
+
     def test_maximum_iterations_keep_nonzero_svg_scale(self):
         root = ET.fromstring(render_svg(choose_squares(70, "turning", "exact")))
         geometry = root.find("{http://www.w3.org/2000/svg}g")
