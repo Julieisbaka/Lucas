@@ -169,7 +169,7 @@ def render_svg(squares: list[Square], labels: bool = False,
         '<svg xmlns="http://www.w3.org/2000/svg" width="12in" height="9in" '
         'viewBox="0 0 1200 900">',
         '<rect width="1200" height="900" fill="white"/>',
-        f'<g transform="translate({left:.10f} {top:.10f}) scale({scale:.10f})">',
+        f'<g transform="translate({left:.15g} {top:.15g}) scale({scale:.15g})">',
     ]
     if alignment == "seamless":
         lines.append('<g id="fillers" fill="#e8e8e8">')

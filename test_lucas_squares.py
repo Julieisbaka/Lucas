@@ -120,6 +120,11 @@ class LucasSquareTests(unittest.TestCase):
             self.assertIn("squares; footprint", result.stdout)
             ET.parse(output)
 
+    def test_maximum_iterations_keep_nonzero_svg_scale(self):
+        root = ET.fromstring(render_svg(choose_squares(70, "turning", "exact")))
+        transform = root.find("{http://www.w3.org/2000/svg}g").attrib["transform"]
+        self.assertGreater(float(transform.split("scale(")[1].split(")")[0]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
