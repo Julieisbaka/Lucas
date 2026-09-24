@@ -16,6 +16,7 @@ from .geometry import (
     orient_for_page,
     page_placement,
     page_ratio,
+    scaled_square,
 )
 from .layouts import (
     choose_squares,
@@ -45,6 +46,7 @@ __all__ = [
     "orient_for_page",
     "page_placement",
     "page_ratio",
+    "scaled_square",
     "render_pdf",
     "render_png",
     "render_svg",

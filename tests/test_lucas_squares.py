@@ -1,5 +1,8 @@
 """Regression tests for the printable Lucas square generator."""
 
+# Test names describe scenarios; local setup values make assertions readable.
+# pylint: disable=duplicate-code,missing-class-docstring,missing-function-docstring,too-many-locals
+
 import subprocess
 import sys
 import tempfile

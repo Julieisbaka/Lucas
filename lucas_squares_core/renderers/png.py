@@ -5,9 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..constants import DEFAULT_SVG_UNITS_PER_INCH
-from ..geometry import Square, bounds, filler_rectangles, page_placement
+from ..geometry import (
+    Square,
+    bounds,
+    filler_rectangles,
+    page_placement,
+    scaled_square,
+)
 
 
+# Lazy import keeps SVG-only use independent of Pillow.
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,import-outside-toplevel
 def render_png(
     squares: list[Square],
     output: Path,
@@ -49,11 +57,7 @@ def render_png(
             )
     stroke_width = max(1, round(1.5 * dpi / DEFAULT_SVG_UNITS_PER_INCH))
     for square in squares:
-        x, y, side = (
-            left + square.x * scale,
-            top + square.y * scale,
-            square.size * scale,
-        )
+        x, y, side = scaled_square(square, scale, left, top)
         draw.rectangle((x, y, x + side, y + side), outline="black", width=stroke_width)
         if labels and side >= 15:
             font_size = max(

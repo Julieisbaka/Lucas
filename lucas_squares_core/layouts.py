@@ -71,6 +71,7 @@ def shelf_layout(
 def layout_score(
     squares: list[Square], target_ratio: float = TARGET_RATIO
 ) -> tuple[float, float]:
+    """Score a layout by page-ratio difference and then occupied area."""
     if not squares:
         return (float("inf"), 0.0)
     width, height = bounds(squares)

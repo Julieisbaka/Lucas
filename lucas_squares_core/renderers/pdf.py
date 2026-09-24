@@ -5,9 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..constants import DEFAULT_SVG_UNITS_PER_INCH
-from ..geometry import Square, bounds, filler_rectangles, page_placement
+from ..geometry import (
+    Square,
+    bounds,
+    filler_rectangles,
+    page_placement,
+    scaled_square,
+)
 
 
+# Lazy import keeps SVG-only use independent of ReportLab.
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,import-outside-toplevel
 def render_pdf(
     squares: list[Square],
     output: Path,
@@ -51,11 +59,7 @@ def render_pdf(
         canvas.setStrokeColor(black)
         canvas.setLineWidth(1.5 * points_per_inch / DEFAULT_SVG_UNITS_PER_INCH)
         for square in squares:
-            x, y, side = (
-                left + square.x * scale,
-                top + square.y * scale,
-                square.size * scale,
-            )
+            x, y, side = scaled_square(square, scale, left, top)
             canvas.rect(x, page_height_points - y - side, side, side, stroke=1, fill=0)
             if labels and side >= 15:
                 font_size = min(

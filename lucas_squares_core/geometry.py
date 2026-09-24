@@ -10,6 +10,8 @@ from .constants import DEFAULT_MARGIN
 
 @dataclass(frozen=True)
 class Square:
+    """A Lucas square in unscaled arrangement coordinates."""
+
     index: int
     size: int
     x: int
@@ -17,6 +19,7 @@ class Square:
 
 
 def bounds(squares: list[Square]) -> tuple[int, int]:
+    """Return the width and height of the arrangement's enclosing rectangle."""
     if not squares:
         return (0, 0)
     return (max(s.x + s.size for s in squares), max(s.y + s.size for s in squares))
@@ -38,6 +41,7 @@ def page_ratio(
 
 
 def normalize(squares: list[Square]) -> list[Square]:
+    """Translate an arrangement so its upper-left bound is at the origin."""
     if not squares:
         return []
     min_x = min(s.x for s in squares)
@@ -55,33 +59,42 @@ def orient_for_page(squares: list[Square], target_ratio: float) -> list[Square]:
     return [Square(s.index, s.size, height - s.y - s.size, s.x) for s in squares]
 
 
+def _unoccupied_runs(squares: list[Square], horizontal_edges: list[int], y: int,
+                     next_y: int) -> set[tuple[int, int]]:
+    """Return horizontal unoccupied intervals in one row of the edge grid."""
+    runs: set[tuple[int, int]] = set()
+    start: int | None = None
+    for x, next_x in zip(horizontal_edges, horizontal_edges[1:]):
+        occupied = any(
+            square.x <= x and next_x <= square.x + square.size
+            and square.y <= y and next_y <= square.y + square.size
+            for square in squares
+        )
+        if not occupied and start is None:
+            start = x
+        if occupied and start is not None:
+            runs.add((start, x))
+            start = None
+    if start is not None:
+        runs.add((start, horizontal_edges[-1]))
+    return runs
+
+
 def filler_rectangles(squares: list[Square]) -> list[tuple[int, int, int, int]]:
     """Partition every uncovered part of the arrangement footprint into rectangles."""
     if not squares:
         return []
     width, height = bounds(squares)
-    xs = sorted({0, width} | {edge for s in squares for edge in (s.x, s.x + s.size)})
-    ys = sorted({0, height} | {edge for s in squares for edge in (s.y, s.y + s.size)})
+    horizontal_edges = sorted(
+        {0, width} | {edge for s in squares for edge in (s.x, s.x + s.size)}
+    )
+    vertical_edges = sorted(
+        {0, height} | {edge for s in squares for edge in (s.y, s.y + s.size)}
+    )
     fillers: list[tuple[int, int, int, int]] = []
     active: dict[tuple[int, int], int] = {}
-    for y, next_y in zip(ys, ys[1:]):
-        runs: set[tuple[int, int]] = set()
-        start: int | None = None
-        for x, next_x in zip(xs, xs[1:]):
-            occupied = any(
-                s.x <= x
-                and next_x <= s.x + s.size
-                and s.y <= y
-                and next_y <= s.y + s.size
-                for s in squares
-            )
-            if not occupied and start is None:
-                start = x
-            if occupied and start is not None:
-                runs.add((start, x))
-                start = None
-        if start is not None:
-            runs.add((start, width))
+    for y, next_y in zip(vertical_edges, vertical_edges[1:]):
+        runs = _unoccupied_runs(squares, horizontal_edges, y, next_y)
         for (left, right), first_y in list(active.items()):
             if (left, right) not in runs:
                 fillers.append((left, first_y, right - left, y - first_y))
@@ -112,3 +125,10 @@ def page_placement(
         (page_width_units - width * scale) / 2,
         (page_height_units - height * scale) / 2,
     )
+
+
+def scaled_square(
+    square: Square, scale: float, left: float, top: float
+) -> tuple[float, float, float]:
+    """Return a square's scaled x/y position and side length on the output page."""
+    return (left + square.x * scale, top + square.y * scale, square.size * scale)

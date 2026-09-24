@@ -13,6 +13,8 @@ from ..constants import (
 from ..geometry import Square, bounds, filler_rectangles, page_placement, page_ratio
 
 
+# The public renderer keeps its established keyword-friendly API.
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
 def render_svg(
     squares: list[Square],
     labels: bool = False,

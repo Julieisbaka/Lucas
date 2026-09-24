@@ -18,6 +18,7 @@ from .renderers import render_svg, write_output
 
 
 def main() -> None:
+    """Parse command-line options, generate squares, and write the selected format."""
     parser = argparse.ArgumentParser(
         description="Draw printable Lucas squares on a page."
     )
