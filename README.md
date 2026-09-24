@@ -18,8 +18,8 @@ Open the SVG in a browser or vector editor and print it at **100% / actual size*
 
 ## Layout controls
 
-- `--iterations N` — number of Lucas squares to include, starting at `2`; default: `8`.
-- `--max-iterations N` or `--override-max-iterations N` — change the default safety ceiling of `70`. To create 80 squares, specify both `--iterations 80 --max-iterations 80`. Large values create enormous Lucas numbers and can make the SVG slow to generate or render.
+- `--iterations N` — number of Lucas squares to include, starting at `2`; `0` creates a valid blank page and `1` creates only the `2 × 2` Lucas square. Default: `8`.
+- `--max-iterations N` or `--override-max-iterations N` — change the default safety ceiling of `70`. To create 80 squares, specify both `--iterations 80 --max-iterations 80`; `--max-iterations 0` permits only a blank page. Large values create enormous Lucas numbers and can make the SVG slow to generate or render.
 - `--count-mode exact|auto` — `exact` always draws N squares. `auto` examines every count from 1 through N and chooses the footprint closest to the requested page ratio; ties favor less empty space, then more squares.
 - `--layout turning|fit` — `turning` uses the outward-turning arrangement. `fit` packs rows and chooses the footprint closest to the requested page ratio. Neither mode draws an arc.
 - `--alignment seamless|edges` — `seamless` fills unused parts of the arrangement’s enclosing rectangle with light-gray filler rectangles. `edges` draws only Lucas squares, leaving unused space blank. Both use shared coordinates, so touching square edges meet exactly.

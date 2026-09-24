@@ -21,15 +21,32 @@ from lucas_squares import (
 
 class LucasSquareTests(unittest.TestCase):
     def test_sequence_and_count_validation(self):
+        self.assertEqual(lucas_numbers(0), [])
         self.assertEqual(lucas_numbers(1), [2])
         self.assertEqual(lucas_numbers(8), [2, 1, 3, 4, 7, 11, 18, 29])
         with self.assertRaises(ValueError):
-            lucas_numbers(0)
+            lucas_numbers(-1)
         with self.assertRaises(ValueError):
             lucas_numbers(71)
         self.assertEqual(lucas_numbers(71, max_iterations=71)[-1], 425_730_551_631_123)
+        self.assertEqual(lucas_numbers(0, max_iterations=0), [])
         with self.assertRaises(ValueError):
-            lucas_numbers(2, max_iterations=0)
+            lucas_numbers(1, max_iterations=0)
+
+    def test_zero_and_one_iterations_render_safely(self):
+        for count in (0, 1):
+            for count_mode in ("exact", "auto"):
+                with self.subTest(count=count, count_mode=count_mode):
+                    squares = choose_squares(count, "turning", count_mode)
+                    self.assertEqual([square.size for square in squares], lucas_numbers(count))
+                    root = ET.fromstring(render_svg(squares))
+                    ns = "{http://www.w3.org/2000/svg}"
+                    if count == 0:
+                        self.assertEqual(len(root.findall(f"{ns}rect")), 1)
+                        self.assertIsNone(root.find(f"{ns}g"))
+                    else:
+                        self.assertEqual(len(squares), 1)
+                        self.assertEqual(squares[0].size, 2)
 
     def test_layouts_are_nonoverlapping_and_squares_keep_their_sides(self):
         for layout in ("turning", "fit"):
@@ -207,6 +224,28 @@ class LucasSquareTests(unittest.TestCase):
                 (root.attrib["width"], root.attrib["height"]), ("8.5in", "11in")
             )
             self.assertEqual(root.attrib["viewBox"], "0 0 612 792")
+
+    def test_cli_zero_iterations_writes_blank_page(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "blank.svg"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(Path(__file__).parent.parent / "lucas_squares.py"),
+                    "--iterations",
+                    "0",
+                    "--count-mode",
+                    "auto",
+                    "--output",
+                    str(output),
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            self.assertIn("0 squares; blank page", result.stdout)
+            root = ET.parse(output).getroot()
+            self.assertEqual(len(list(root)), 1)
 
     def test_maximum_iterations_keep_nonzero_svg_scale(self):
         root = ET.fromstring(render_svg(choose_squares(70, "turning", "exact")))
