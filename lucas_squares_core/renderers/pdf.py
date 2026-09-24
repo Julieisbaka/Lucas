@@ -57,6 +57,7 @@ def render_pdf(
                     fill=1,
                 )
         canvas.setStrokeColor(black)
+        canvas.setFillColor(black)
         canvas.setLineWidth(1.5 * points_per_inch / DEFAULT_SVG_UNITS_PER_INCH)
         for square in squares:
             x, y, side = scaled_square(square, scale, left, top)
@@ -68,6 +69,7 @@ def render_pdf(
                     points_per_inch * 0.32,
                 )
                 canvas.setFont("Helvetica", font_size)
+                # ReportLab writes a PDF text operator here, not a raster glyph.
                 canvas.drawCentredString(
                     x + side / 2,
                     page_height_points - y - side / 2 - font_size * 0.35,

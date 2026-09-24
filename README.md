@@ -40,6 +40,8 @@ Open the SVG in a browser or vector editor and print it at **100% / actual size*
 
 The printed page ratio and the squares’ enclosing-footprint ratio are separate. The generator uniformly scales and centers the footprint, never stretches it, so every Lucas shape remains a true square. Lucas squares alone do not necessarily tile a rectangle; the `seamless` option adds non-Lucas filler rectangles only inside the footprint, never in the page margins.
 
+When `--labels` is used with `--format pdf`, labels are written as selectable, copyable PDF text. PNG labels are raster pixels and cannot be selected.
+
 Run the tests with `python -m unittest discover -s tests`.
 
 PNG and PDF export require the packages listed in `requirements.txt`; install them with `python -m pip install -r requirements.txt`.

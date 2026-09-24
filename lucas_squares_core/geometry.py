@@ -59,15 +59,18 @@ def orient_for_page(squares: list[Square], target_ratio: float) -> list[Square]:
     return [Square(s.index, s.size, height - s.y - s.size, s.x) for s in squares]
 
 
-def _unoccupied_runs(squares: list[Square], horizontal_edges: list[int], y: int,
-                     next_y: int) -> set[tuple[int, int]]:
+def _unoccupied_runs(
+    squares: list[Square], horizontal_edges: list[int], y: int, next_y: int
+) -> set[tuple[int, int]]:
     """Return horizontal unoccupied intervals in one row of the edge grid."""
     runs: set[tuple[int, int]] = set()
     start: int | None = None
     for x, next_x in zip(horizontal_edges, horizontal_edges[1:]):
         occupied = any(
-            square.x <= x and next_x <= square.x + square.size
-            and square.y <= y and next_y <= square.y + square.size
+            square.x <= x
+            and next_x <= square.x + square.size
+            and square.y <= y
+            and next_y <= square.y + square.size
             for square in squares
         )
         if not occupied and start is None:
