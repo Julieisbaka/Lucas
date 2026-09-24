@@ -22,8 +22,9 @@ def bounds(squares: list[Square]) -> tuple[int, int]:
     return (max(s.x + s.size for s in squares), max(s.y + s.size for s in squares))
 
 
-def page_ratio(page_width: float, page_height: float,
-               margin: float = DEFAULT_MARGIN) -> float:
+def page_ratio(
+    page_width: float, page_height: float, margin: float = DEFAULT_MARGIN
+) -> float:
     """Validate shared page dimensions and margin, then return their ratio."""
     if not all(math.isfinite(value) for value in (page_width, page_height, margin)):
         raise ValueError("page dimensions and margin must be finite numbers")
@@ -68,8 +69,11 @@ def filler_rectangles(squares: list[Square]) -> list[tuple[int, int, int, int]]:
         start: int | None = None
         for x, next_x in zip(xs, xs[1:]):
             occupied = any(
-                s.x <= x and next_x <= s.x + s.size and
-                s.y <= y and next_y <= s.y + s.size for s in squares
+                s.x <= x
+                and next_x <= s.x + s.size
+                and s.y <= y
+                and next_y <= s.y + s.size
+                for s in squares
             )
             if not occupied and start is None:
                 start = x
@@ -89,9 +93,12 @@ def filler_rectangles(squares: list[Square]) -> list[tuple[int, int, int, int]]:
     return sorted(fillers)
 
 
-def page_placement(squares: list[Square], page_width_units: float,
-                   page_height_units: float, margin_units: float
-                   ) -> tuple[float, float, float] | None:
+def page_placement(
+    squares: list[Square],
+    page_width_units: float,
+    page_height_units: float,
+    margin_units: float,
+) -> tuple[float, float, float] | None:
     """Return the uniform scale and top-left offset for a non-empty arrangement."""
     if not squares:
         return None
@@ -100,5 +107,8 @@ def page_placement(squares: list[Square], page_width_units: float,
         (page_width_units - 2 * margin_units) / width,
         (page_height_units - 2 * margin_units) / height,
     )
-    return (scale, (page_width_units - width * scale) / 2,
-            (page_height_units - height * scale) / 2)
+    return (
+        scale,
+        (page_width_units - width * scale) / 2,
+        (page_height_units - height * scale) / 2,
+    )

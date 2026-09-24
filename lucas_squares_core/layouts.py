@@ -8,7 +8,9 @@ from .constants import DEFAULT_MAX_ITERATIONS, TARGET_RATIO
 from .geometry import Square, bounds, normalize, orient_for_page
 
 
-def lucas_numbers(count: int, max_iterations: int = DEFAULT_MAX_ITERATIONS) -> list[int]:
+def lucas_numbers(
+    count: int, max_iterations: int = DEFAULT_MAX_ITERATIONS
+) -> list[int]:
     """Return count Lucas numbers, starting with 2, 1."""
     if max_iterations < 0:
         raise ValueError("max iterations cannot be negative")
@@ -20,7 +22,9 @@ def lucas_numbers(count: int, max_iterations: int = DEFAULT_MAX_ITERATIONS) -> l
     return numbers[:count]
 
 
-def turning_layout(numbers: list[int], target_ratio: float = TARGET_RATIO) -> list[Square]:
+def turning_layout(
+    numbers: list[int], target_ratio: float = TARGET_RATIO
+) -> list[Square]:
     """Place successive squares around the current outside edge, without an arc."""
     if not numbers:
         return []
@@ -44,8 +48,9 @@ def turning_layout(numbers: list[int], target_ratio: float = TARGET_RATIO) -> li
     return orient_for_page(normalize(squares), target_ratio)
 
 
-def shelf_layout(numbers: list[int], max_row_width: float,
-                 target_ratio: float) -> list[Square]:
+def shelf_layout(
+    numbers: list[int], max_row_width: float, target_ratio: float
+) -> list[Square]:
     """Pack descending squares into edge-aligned rows of a given width."""
     if not numbers:
         return []
@@ -58,11 +63,14 @@ def shelf_layout(numbers: list[int], max_row_width: float,
         result.append(Square(index, side, x, y))
         x += side
         row_height = max(row_height, side)
-    return orient_for_page(sorted(result, key=lambda square: square.index), target_ratio)
+    return orient_for_page(
+        sorted(result, key=lambda square: square.index), target_ratio
+    )
 
 
-def layout_score(squares: list[Square], target_ratio: float = TARGET_RATIO
-                 ) -> tuple[float, float]:
+def layout_score(
+    squares: list[Square], target_ratio: float = TARGET_RATIO
+) -> tuple[float, float]:
     if not squares:
         return (float("inf"), 0.0)
     width, height = bounds(squares)
@@ -81,13 +89,19 @@ def fit_layout(numbers: list[int], target_ratio: float = TARGET_RATIO) -> list[S
     for side in descending:
         running_width += side
         widths.add(float(running_width))
-    return min((shelf_layout(numbers, width, target_ratio) for width in sorted(widths)),
-               key=lambda squares: layout_score(squares, target_ratio))
+    return min(
+        (shelf_layout(numbers, width, target_ratio) for width in sorted(widths)),
+        key=lambda squares: layout_score(squares, target_ratio),
+    )
 
 
-def choose_squares(iterations: int, layout: str, count_mode: str,
-                   target_ratio: float = TARGET_RATIO,
-                   max_iterations: int = DEFAULT_MAX_ITERATIONS) -> list[Square]:
+def choose_squares(
+    iterations: int,
+    layout: str,
+    count_mode: str,
+    target_ratio: float = TARGET_RATIO,
+    max_iterations: int = DEFAULT_MAX_ITERATIONS,
+) -> list[Square]:
     """Pick exactly iterations squares, or the best count up to iterations."""
     lucas_numbers(iterations, max_iterations)
     if iterations == 0:
@@ -96,7 +110,11 @@ def choose_squares(iterations: int, layout: str, count_mode: str,
     if count_mode == "exact":
         return place(lucas_numbers(iterations, max_iterations), target_ratio)
     if count_mode == "auto":
-        return min((place(lucas_numbers(count, max_iterations), target_ratio)
-                    for count in range(1, iterations + 1)),
-                   key=lambda squares: (*layout_score(squares, target_ratio), -len(squares)))
+        return min(
+            (
+                place(lucas_numbers(count, max_iterations), target_ratio)
+                for count in range(1, iterations + 1)
+            ),
+            key=lambda squares: (*layout_score(squares, target_ratio), -len(squares)),
+        )
     raise ValueError("count_mode must be 'exact' or 'auto'")
