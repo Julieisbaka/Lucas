@@ -177,16 +177,15 @@ def render_svg(squares: list[Square], labels: bool = False,
             lines.append(f'<rect x="{x}" y="{y}" width="{filler_width}" '
                          f'height="{filler_height}"/>')
         lines.append('</g>')
-    lines.append('<g id="lucas" fill="none" stroke="black" '
-                 'stroke-width="1.5" vector-effect="non-scaling-stroke">')
+    lines.append(f'<g id="lucas" fill="none" stroke="black" '
+                 f'stroke-width="{1.5 / scale:.12g}">')
     for square in squares:
         lines.append(f'<rect x="{square.x}" y="{square.y}" '
                      f'width="{square.size}" height="{square.size}"/>')
     lines.append('</g>')
     if alignment == "seamless":
         lines.append(f'<rect width="{width}" height="{height}" fill="none" '
-                     f'stroke="black" stroke-width="1.5" '
-                     f'vector-effect="non-scaling-stroke"/>')
+                     f'stroke="black" stroke-width="{1.5 / scale:.12g}"/>')
     lines.append('</g>')
     for square in squares:
         side = square.size * scale
