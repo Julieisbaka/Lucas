@@ -27,9 +27,7 @@ class LucasSquareTests(unittest.TestCase):
             lucas_numbers(0)
         with self.assertRaises(ValueError):
             lucas_numbers(71)
-        self.assertEqual(
-            lucas_numbers(71, max_iterations=71)[-1], 425_730_551_631_123
-        )
+        self.assertEqual(lucas_numbers(71, max_iterations=71)[-1], 425_730_551_631_123)
         with self.assertRaises(ValueError):
             lucas_numbers(2, max_iterations=0)
 
@@ -205,8 +203,9 @@ class LucasSquareTests(unittest.TestCase):
             )
             self.assertIn("squares; footprint", result.stdout)
             root = ET.parse(output).getroot()
-            self.assertEqual((root.attrib["width"], root.attrib["height"]),
-                             ("8.5in", "11in"))
+            self.assertEqual(
+                (root.attrib["width"], root.attrib["height"]), ("8.5in", "11in")
+            )
             self.assertEqual(root.attrib["viewBox"], "0 0 612 792")
 
     def test_maximum_iterations_keep_nonzero_svg_scale(self):

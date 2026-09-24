@@ -50,7 +50,9 @@ def page_ratio(
     if margin < 0:
         raise ValueError("margin cannot be negative")
     if min(page_width, page_height) <= 2 * margin:
-        raise ValueError(f"page dimensions must be greater than twice the margin ({2 * margin:g})")
+        raise ValueError(
+            f"page dimensions must be greater than twice the margin ({2 * margin:g})"
+        )
     return page_width / page_height
 
 
@@ -68,7 +70,9 @@ def orient_for_page(squares: list[Square], target_ratio: float) -> list[Square]:
     return [Square(s.index, s.size, height - s.y - s.size, s.x) for s in squares]
 
 
-def turning_layout(numbers: list[int], target_ratio: float = TARGET_RATIO) -> list[Square]:
+def turning_layout(
+    numbers: list[int], target_ratio: float = TARGET_RATIO
+) -> list[Square]:
     """Place successive squares around the current outside edge, without an arc."""
     squares = [Square(0, numbers[0], 0, 0)]
     if len(numbers) > 1:
@@ -104,7 +108,9 @@ def shelf_layout(
         result.append(Square(index, side, x, y))
         x += side
         row_height = max(row_height, side)
-    return orient_for_page(sorted(result, key=lambda square: square.index), target_ratio)
+    return orient_for_page(
+        sorted(result, key=lambda square: square.index), target_ratio
+    )
 
 
 def layout_score(
@@ -141,7 +147,9 @@ def choose_squares(
     max_iterations: int = DEFAULT_MAX_ITERATIONS,
 ) -> list[Square]:
     """Pick exactly iterations squares, or the best count up to iterations."""
-    lucas_numbers(iterations, max_iterations)  # Validate even if a different count is selected.
+    lucas_numbers(
+        iterations, max_iterations
+    )  # Validate even if a different count is selected.
     place = turning_layout if layout == "turning" else fit_layout
     if count_mode == "exact":
         return place(lucas_numbers(iterations, max_iterations), target_ratio)
