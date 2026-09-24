@@ -15,7 +15,7 @@ from ..geometry import (
 
 
 # Lazy import keeps SVG-only use independent of Pillow.
-# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,import-outside-toplevel
+# pylint: disable=too-many-arguments,too-many-locals,import-outside-toplevel
 def render_png(
     squares: list[Square],
     output: Path,
