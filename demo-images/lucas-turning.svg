@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="12in" height="9in" viewBox="0 0 1200 900">
+<rect width="1200" height="900" fill="white"/>
+<g transform="translate(45 95.7446808510638) scale(23.6170212765957)">
+<g id="fillers" fill="#e8e8e8">
+<rect x="0" y="0" width="29" height="1"/>
+<rect x="29" y="18" width="4" height="1"/>
+<rect x="35" y="22" width="1" height="1"/>
+<rect x="36" y="29" width="11" height="1"/>
+</g>
+<g id="lucas" fill="none" stroke="black" stroke-width="0.0635135135135">
+<rect x="33" y="21" width="2" height="2"/>
+<rect x="35" y="21" width="1" height="1"/>
+<rect x="33" y="18" width="3" height="3"/>
+<rect x="29" y="19" width="4" height="4"/>
+<rect x="29" y="23" width="7" height="7"/>
+<rect x="36" y="18" width="11" height="11"/>
+<rect x="29" y="0" width="18" height="18"/>
+<rect x="0" y="1" width="29" height="29"/>
+</g>
+<rect width="47" height="30" fill="none" stroke="black" stroke-width="0.0635135135135"/>
+</g>
+<text x="847.9787" y="615.3191" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="21.2553" fill="black">2</text>
+<text x="883.4043" y="603.5106" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="10.6277" fill="black">1</text>
+<text x="859.7872" y="556.2766" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="31.8830" fill="black">3</text>
+<text x="777.1277" y="591.7021" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="32.0000" fill="black">4</text>
+<text x="812.5532" y="721.5957" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="32.0000" fill="black">7</text>
+<text x="1025.1064" y="650.7447" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="32.0000" fill="black">11</text>
+<text x="942.4468" y="308.2979" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="32.0000" fill="black">18</text>
+<text x="387.4468" y="461.8085" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="32.0000" fill="black">29</text>
+</svg>

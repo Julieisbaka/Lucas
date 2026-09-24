@@ -2,3 +2,7 @@ __pycache__/
 *.svg
 *.png
 *.pdf
+!demo-images/
+!demo-images/*.svg
+!demo-images/*.png
+!demo-images/*.pdf
