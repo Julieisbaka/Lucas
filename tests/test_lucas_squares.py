@@ -38,7 +38,9 @@ class LucasSquareTests(unittest.TestCase):
             for count_mode in ("exact", "auto"):
                 with self.subTest(count=count, count_mode=count_mode):
                     squares = choose_squares(count, "turning", count_mode)
-                    self.assertEqual([square.size for square in squares], lucas_numbers(count))
+                    self.assertEqual(
+                        [square.size for square in squares], lucas_numbers(count)
+                    )
                     root = ET.fromstring(render_svg(squares))
                     ns = "{http://www.w3.org/2000/svg}"
                     if count == 0:
