@@ -7,10 +7,11 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
-PAGE_WIDTH = 1200  # 100 SVG units per printed inch
-PAGE_HEIGHT = 900
-MARGIN = 45
-TARGET_RATIO = PAGE_WIDTH / PAGE_HEIGHT
+DEFAULT_PAGE_WIDTH = 12.0
+DEFAULT_PAGE_HEIGHT = 9.0
+SVG_UNITS_PER_INCH = 100
+MARGIN_INCHES = 0.45
+TARGET_RATIO = DEFAULT_PAGE_WIDTH / DEFAULT_PAGE_HEIGHT
 MAX_ITERATIONS = 70
 
 
@@ -36,21 +37,30 @@ def bounds(squares: list[Square]) -> tuple[int, int]:
     return (max(s.x + s.size for s in squares), max(s.y + s.size for s in squares))
 
 
+def page_ratio(page_width: float, page_height: float) -> float:
+    """Validate physical page dimensions and return their width-to-height ratio."""
+    if not (math.isfinite(page_width) and math.isfinite(page_height)):
+        raise ValueError("page dimensions must be finite numbers")
+    if min(page_width, page_height) <= 2 * MARGIN_INCHES:
+        raise ValueError(f"page dimensions must be greater than {2 * MARGIN_INCHES} inches")
+    return page_width / page_height
+
+
 def normalize(squares: list[Square]) -> list[Square]:
     min_x = min(s.x for s in squares)
     min_y = min(s.y for s in squares)
     return [Square(s.index, s.size, s.x - min_x, s.y - min_y) for s in squares]
 
 
-def landscape(squares: list[Square]) -> list[Square]:
-    """Rotate a tall arrangement to better suit landscape paper."""
+def orient_for_page(squares: list[Square], target_ratio: float) -> list[Square]:
+    """Keep the orientation whose enclosing ratio is closest to the page."""
     width, height = bounds(squares)
-    if width >= height:
+    if abs(width / height - target_ratio) <= abs(height / width - target_ratio):
         return squares
     return [Square(s.index, s.size, height - s.y - s.size, s.x) for s in squares]
 
 
-def turning_layout(numbers: list[int]) -> list[Square]:
+def turning_layout(numbers: list[int], target_ratio: float = TARGET_RATIO) -> list[Square]:
     """Place successive squares around the current outside edge, without an arc."""
     squares = [Square(0, numbers[0], 0, 0)]
     if len(numbers) > 1:
@@ -70,10 +80,12 @@ def turning_layout(numbers: list[int]) -> list[Square]:
         else:  # right
             x, y = width, 0
         squares = current + [Square(index, side, x, y)]
-    return landscape(normalize(squares))
+    return orient_for_page(normalize(squares), target_ratio)
 
 
-def shelf_layout(numbers: list[int], max_row_width: float) -> list[Square]:
+def shelf_layout(
+    numbers: list[int], max_row_width: float, target_ratio: float
+) -> list[Square]:
     """Pack descending squares into edge-aligned rows of a given width."""
     result: list[Square] = []
     x = y = row_height = 0
@@ -84,20 +96,22 @@ def shelf_layout(numbers: list[int], max_row_width: float) -> list[Square]:
         result.append(Square(index, side, x, y))
         x += side
         row_height = max(row_height, side)
-    return landscape(sorted(result, key=lambda square: square.index))
+    return orient_for_page(sorted(result, key=lambda square: square.index), target_ratio)
 
 
-def layout_score(squares: list[Square]) -> tuple[float, float]:
+def layout_score(
+    squares: list[Square], target_ratio: float = TARGET_RATIO
+) -> tuple[float, float]:
     width, height = bounds(squares)
     occupied_area = sum(s.size * s.size for s in squares)
-    return (abs(width / height - TARGET_RATIO), -occupied_area / (width * height))
+    return (abs(width / height - target_ratio), -occupied_area / (width * height))
 
 
-def fit_layout(numbers: list[int]) -> list[Square]:
-    """Try row widths and keep the closest, then most-filled 4:3 footprint."""
+def fit_layout(numbers: list[int], target_ratio: float = TARGET_RATIO) -> list[Square]:
+    """Try row widths and keep the closest, then most-filled page footprint."""
     descending = sorted(numbers, reverse=True)
     total_area = sum(side * side for side in numbers)
-    ideal_width = math.sqrt(total_area * TARGET_RATIO)
+    ideal_width = math.sqrt(total_area * target_ratio)
     widths: set[float] = {
         ideal_width * factor for factor in (0.5, 0.75, 1, 1.25, 1.5, 2)
     }
@@ -106,20 +120,26 @@ def fit_layout(numbers: list[int]) -> list[Square]:
         running_width += side
         widths.add(float(running_width))
     return min(
-        (shelf_layout(numbers, width) for width in sorted(widths)), key=layout_score
+        (shelf_layout(numbers, width, target_ratio) for width in sorted(widths)),
+        key=lambda squares: layout_score(squares, target_ratio),
     )
 
 
-def choose_squares(iterations: int, layout: str, count_mode: str) -> list[Square]:
+def choose_squares(
+    iterations: int,
+    layout: str,
+    count_mode: str,
+    target_ratio: float = TARGET_RATIO,
+) -> list[Square]:
     """Pick exactly iterations squares, or the best count up to iterations."""
     lucas_numbers(iterations)  # Validate even if a different count is selected.
     place = turning_layout if layout == "turning" else fit_layout
     if count_mode == "exact":
-        return place(lucas_numbers(iterations))
+        return place(lucas_numbers(iterations), target_ratio)
     if count_mode == "auto":
         return min(
-            (place(lucas_numbers(n)) for n in range(1, iterations + 1)),
-            key=lambda squares: (*layout_score(squares), -len(squares)),
+            (place(lucas_numbers(n), target_ratio) for n in range(1, iterations + 1)),
+            key=lambda squares: (*layout_score(squares, target_ratio), -len(squares)),
         )
     raise ValueError("count_mode must be 'exact' or 'auto'")
 
@@ -161,19 +181,31 @@ def filler_rectangles(squares: list[Square]) -> list[tuple[int, int, int, int]]:
 
 
 def render_svg(
-    squares: list[Square], labels: bool = False, alignment: str = "seamless"
+    squares: list[Square],
+    labels: bool = False,
+    alignment: str = "seamless",
+    page_width: float = DEFAULT_PAGE_WIDTH,
+    page_height: float = DEFAULT_PAGE_HEIGHT,
 ) -> str:
     """Render exact shared square edges; optionally fill unused footprint."""
     if alignment not in ("seamless", "edges"):
         raise ValueError("alignment must be 'seamless' or 'edges'")
+    page_ratio(page_width, page_height)
+    page_width_units = page_width * SVG_UNITS_PER_INCH
+    page_height_units = page_height * SVG_UNITS_PER_INCH
+    margin = MARGIN_INCHES * SVG_UNITS_PER_INCH
     width, height = bounds(squares)
-    scale = min((PAGE_WIDTH - 2 * MARGIN) / width, (PAGE_HEIGHT - 2 * MARGIN) / height)
-    left = (PAGE_WIDTH - width * scale) / 2
-    top = (PAGE_HEIGHT - height * scale) / 2
+    scale = min(
+        (page_width_units - 2 * margin) / width,
+        (page_height_units - 2 * margin) / height,
+    )
+    left = (page_width_units - width * scale) / 2
+    top = (page_height_units - height * scale) / 2
     lines = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="12in" height="9in" '
-        'viewBox="0 0 1200 900">',
-        '<rect width="1200" height="900" fill="white"/>',
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{page_width:g}in" '
+        f'height="{page_height:g}in" viewBox="0 0 {page_width_units:g} '
+        f'{page_height_units:g}">',
+        f'<rect width="{page_width_units:g}" height="{page_height_units:g}" fill="white"/>',
         f'<g transform="translate({left:.15g} {top:.15g}) scale({scale:.15g})">',
     ]
     if alignment == "seamless":
@@ -244,6 +276,18 @@ def main() -> None:
         "or draw only Lucas square edges",
     )
     parser.add_argument(
+        "--width",
+        type=float,
+        default=DEFAULT_PAGE_WIDTH,
+        help="printed page width in inches (default: 12)",
+    )
+    parser.add_argument(
+        "--height",
+        type=float,
+        default=DEFAULT_PAGE_HEIGHT,
+        help="printed page height in inches (default: 9)",
+    )
+    parser.add_argument(
         "--labels",
         action="store_true",
         help="print Lucas numbers inside squares when legible",
@@ -256,16 +300,24 @@ def main() -> None:
     )
     args = parser.parse_args()
     try:
-        squares = choose_squares(args.iterations, args.layout, args.count_mode)
+        ratio = page_ratio(args.width, args.height)
+        squares = choose_squares(
+            args.iterations,
+            args.layout,
+            args.count_mode,
+            ratio,
+        )
+        svg = render_svg(
+            squares, args.labels, args.alignment, args.width, args.height
+        )
     except ValueError as error:
         parser.error(str(error))
-    args.output.write_text(
-        render_svg(squares, args.labels, args.alignment), encoding="utf-8"
-    )
+    args.output.write_text(svg, encoding="utf-8")
     width, height = bounds(squares)
     print(
         f"Wrote {args.output} ({len(squares)} squares; footprint "
-        f"{width}:{height} = {width / height:.5f}; page 12:9 = {TARGET_RATIO:.5f})"
+        f"{width}:{height} = {width / height:.5f}; page {args.width:g}:{args.height:g} "
+        f"= {args.width / args.height:.5f})"
     )
 
 

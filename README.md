@@ -10,11 +10,12 @@ Options:
 - `--count-mode exact|auto`: `exact` always draws N squares (default). `auto` tries counts from 1 through N and chooses the arrangement with an enclosing width:height ratio closest to **12:9 (4:3)**; ties favor less empty area, then more squares. The command prints the chosen count and ratio.
 - `--layout turning|fit`: `turning` places squares around the outer edge in the familiar outward-turning arrangement (default). `fit` rearranges the squares into rows and searches for a footprint closer to the page ratio. Neither layout draws an arc.
 - `--alignment seamless|edges`: `seamless` (default) fills all unused space *inside the square arrangement's enclosing rectangle* with light-gray filler rectangles, leaving no gaps in the footprint. `edges` draws only Lucas square outlines; blank spaces remain. In both modes all square edges use one shared coordinate system, so touching edges line up exactly.
+- `--width INCHES` and `--height INCHES`: printed page dimensions (defaults: `12` and `9`). Decimals are accepted, so US Letter portrait is `--width 8.5 --height 11`. The SVG's physical dimensions and page-fit calculations both use these values.
 - `--labels`: add Lucas numbers inside squares large enough for legible text; omitted by default.
 - `--output FILE`: SVG filename (default: `lucas_squares.svg`).
 
-For example, `python lucas_squares.py --iterations 12 --count-mode auto --layout fit --labels --output fitted.svg` tries up to twelve squares with row packing and prints their numbers.
+For example, `python lucas_squares.py --iterations 12 --count-mode auto --layout fit --width 8.5 --height 11 --labels --output fitted.svg` tries up to twelve squares with row packing for US Letter portrait and prints their numbers.
 
-**Note:** The reported ratio describes the *bounding footprint* of the squares, not the ratio of each square or the whole page. Lucas squares alone need not tile a rectangle, so a seamless footprint requires filler shapes that are **not** Lucas squares. The drawing is uniformly scaled and centered, never stretched, so all squares remain squares even when the footprint differs from 4:3. Filler shapes cover the footprint, not the white margins of the 12 × 9-inch paper. Auto mode may select fewer than N squares when an early count matches the paper better.
+**Note:** The reported ratio describes the *bounding footprint* of the squares, not the ratio of each square or the whole page. Lucas squares alone need not tile a rectangle, so a seamless footprint requires filler shapes that are **not** Lucas squares. The drawing is uniformly scaled and centered, never stretched, so all squares remain squares even when the footprint differs from the requested page ratio. Filler shapes cover the footprint, not the white margins of the paper. Auto mode may select fewer than N squares when an early count matches the paper better.
 
-Run the checks with `python -m unittest discover`.
+Run the checks with `python -m unittest discover -s tests`.

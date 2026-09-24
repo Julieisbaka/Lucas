@@ -14,6 +14,7 @@ from lucas_squares import (
     filler_rectangles,
     layout_score,
     lucas_numbers,
+    page_ratio,
     render_svg,
 )
 
@@ -135,13 +136,28 @@ class LucasSquareTests(unittest.TestCase):
                 self.assertEqual(bool(root.findall(f"{ns}text")), labeled)
                 self.assertFalse(root.findall(f".//{ns}path"))
 
+    def test_svg_uses_configured_page_dimensions_and_ratio(self):
+        page_width, page_height = 8.5, 11
+        squares = choose_squares(8, "fit", "exact", page_ratio(page_width, page_height))
+        root = ET.fromstring(
+            render_svg(squares, page_width=page_width, page_height=page_height)
+        )
+        self.assertEqual(root.attrib["width"], "8.5in")
+        self.assertEqual(root.attrib["height"], "11in")
+        self.assertEqual(root.attrib["viewBox"], "0 0 850 1100")
+        self.assertLess(bounds(squares)[0] / bounds(squares)[1], 1)
+        for dimensions in ((0, 9), (12, 0.9), (float("inf"), 9)):
+            with self.subTest(dimensions=dimensions):
+                with self.assertRaises(ValueError):
+                    page_ratio(*dimensions)
+
     def test_cli_writes_svg_and_reports_selected_count(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "art.svg"
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(Path(__file__).with_name("lucas_squares.py")),
+                    str(Path(__file__).parent.parent / "lucas_squares.py"),
                     "--iterations",
                     "6",
                     "--layout",
@@ -150,6 +166,10 @@ class LucasSquareTests(unittest.TestCase):
                     "auto",
                     "--alignment",
                     "edges",
+                    "--width",
+                    "8.5",
+                    "--height",
+                    "11",
                     "--labels",
                     "--output",
                     str(output),
@@ -159,7 +179,9 @@ class LucasSquareTests(unittest.TestCase):
                 check=True,
             )
             self.assertIn("squares; footprint", result.stdout)
-            ET.parse(output)
+            root = ET.parse(output).getroot()
+            self.assertEqual((root.attrib["width"], root.attrib["height"]),
+                             ("8.5in", "11in"))
 
     def test_maximum_iterations_keep_nonzero_svg_scale(self):
         root = ET.fromstring(render_svg(choose_squares(70, "turning", "exact")))
