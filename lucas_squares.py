@@ -250,9 +250,11 @@ def render_svg(
     )
     left = (page_width_units - width * scale) / 2
     top = (page_height_units - height * scale) / 2
-    lines.extend([
-        f'<g transform="translate({left:.15g} {top:.15g}) scale({scale:.15g})">',
-    ])
+    lines.extend(
+        [
+            f'<g transform="translate({left:.15g} {top:.15g}) scale({scale:.15g})">',
+        ]
+    )
     if alignment == "seamless":
         lines.append('<g id="fillers" fill="#e8e8e8">')
         for x, y, filler_width, filler_height in filler_rectangles(squares):
