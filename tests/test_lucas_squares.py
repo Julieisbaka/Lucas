@@ -27,6 +27,11 @@ class LucasSquareTests(unittest.TestCase):
             lucas_numbers(0)
         with self.assertRaises(ValueError):
             lucas_numbers(71)
+        self.assertEqual(
+            lucas_numbers(71, max_iterations=71)[-1], 425_730_551_631_123
+        )
+        with self.assertRaises(ValueError):
+            lucas_numbers(2, max_iterations=0)
 
     def test_layouts_are_nonoverlapping_and_squares_keep_their_sides(self):
         for layout in ("turning", "fit"):
@@ -151,6 +156,22 @@ class LucasSquareTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     page_ratio(*dimensions)
 
+    def test_svg_uses_configured_margin_and_coordinate_density(self):
+        root = ET.fromstring(
+            render_svg(
+                choose_squares(4, "turning", "exact"),
+                page_width=8.5,
+                page_height=11,
+                margin=0.25,
+                svg_units_per_inch=72,
+            )
+        )
+        self.assertEqual(root.attrib["viewBox"], "0 0 612 792")
+        with self.assertRaises(ValueError):
+            page_ratio(8, 10, margin=4)
+        with self.assertRaises(ValueError):
+            render_svg(choose_squares(4, "turning", "exact"), svg_units_per_inch=0)
+
     def test_cli_writes_svg_and_reports_selected_count(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "art.svg"
@@ -170,6 +191,10 @@ class LucasSquareTests(unittest.TestCase):
                     "8.5",
                     "--height",
                     "11",
+                    "--margin",
+                    "0.25",
+                    "--svg-units-per-inch",
+                    "72",
                     "--labels",
                     "--output",
                     str(output),
@@ -182,6 +207,7 @@ class LucasSquareTests(unittest.TestCase):
             root = ET.parse(output).getroot()
             self.assertEqual((root.attrib["width"], root.attrib["height"]),
                              ("8.5in", "11in"))
+            self.assertEqual(root.attrib["viewBox"], "0 0 612 792")
 
     def test_maximum_iterations_keep_nonzero_svg_scale(self):
         root = ET.fromstring(render_svg(choose_squares(70, "turning", "exact")))

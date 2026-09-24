@@ -9,10 +9,10 @@ from pathlib import Path
 
 DEFAULT_PAGE_WIDTH = 12.0
 DEFAULT_PAGE_HEIGHT = 9.0
-SVG_UNITS_PER_INCH = 100
-MARGIN_INCHES = 0.45
+DEFAULT_SVG_UNITS_PER_INCH = 100
+DEFAULT_MARGIN = 0.45
 TARGET_RATIO = DEFAULT_PAGE_WIDTH / DEFAULT_PAGE_HEIGHT
-MAX_ITERATIONS = 70
+DEFAULT_MAX_ITERATIONS = 70
 
 
 @dataclass(frozen=True)
@@ -23,10 +23,14 @@ class Square:
     y: int
 
 
-def lucas_numbers(count: int) -> list[int]:
+def lucas_numbers(
+    count: int, max_iterations: int = DEFAULT_MAX_ITERATIONS
+) -> list[int]:
     """Return count Lucas numbers, starting with 2, 1."""
-    if not 1 <= count <= MAX_ITERATIONS:
-        raise ValueError(f"iterations must be between 1 and {MAX_ITERATIONS}")
+    if max_iterations < 1:
+        raise ValueError("max iterations must be at least 1")
+    if not 1 <= count <= max_iterations:
+        raise ValueError(f"iterations must be between 1 and {max_iterations}")
     numbers = [2, 1]
     for _ in range(2, count):
         numbers.append(numbers[-1] + numbers[-2])
@@ -37,12 +41,16 @@ def bounds(squares: list[Square]) -> tuple[int, int]:
     return (max(s.x + s.size for s in squares), max(s.y + s.size for s in squares))
 
 
-def page_ratio(page_width: float, page_height: float) -> float:
-    """Validate physical page dimensions and return their width-to-height ratio."""
-    if not (math.isfinite(page_width) and math.isfinite(page_height)):
-        raise ValueError("page dimensions must be finite numbers")
-    if min(page_width, page_height) <= 2 * MARGIN_INCHES:
-        raise ValueError(f"page dimensions must be greater than {2 * MARGIN_INCHES} inches")
+def page_ratio(
+    page_width: float, page_height: float, margin: float = DEFAULT_MARGIN
+) -> float:
+    """Validate shared page dimensions and margin, then return their ratio."""
+    if not all(math.isfinite(value) for value in (page_width, page_height, margin)):
+        raise ValueError("page dimensions and margin must be finite numbers")
+    if margin < 0:
+        raise ValueError("margin cannot be negative")
+    if min(page_width, page_height) <= 2 * margin:
+        raise ValueError(f"page dimensions must be greater than twice the margin ({2 * margin:g})")
     return page_width / page_height
 
 
@@ -130,15 +138,19 @@ def choose_squares(
     layout: str,
     count_mode: str,
     target_ratio: float = TARGET_RATIO,
+    max_iterations: int = DEFAULT_MAX_ITERATIONS,
 ) -> list[Square]:
     """Pick exactly iterations squares, or the best count up to iterations."""
-    lucas_numbers(iterations)  # Validate even if a different count is selected.
+    lucas_numbers(iterations, max_iterations)  # Validate even if a different count is selected.
     place = turning_layout if layout == "turning" else fit_layout
     if count_mode == "exact":
-        return place(lucas_numbers(iterations), target_ratio)
+        return place(lucas_numbers(iterations, max_iterations), target_ratio)
     if count_mode == "auto":
         return min(
-            (place(lucas_numbers(n), target_ratio) for n in range(1, iterations + 1)),
+            (
+                place(lucas_numbers(n, max_iterations), target_ratio)
+                for n in range(1, iterations + 1)
+            ),
             key=lambda squares: (*layout_score(squares, target_ratio), -len(squares)),
         )
     raise ValueError("count_mode must be 'exact' or 'auto'")
@@ -186,18 +198,22 @@ def render_svg(
     alignment: str = "seamless",
     page_width: float = DEFAULT_PAGE_WIDTH,
     page_height: float = DEFAULT_PAGE_HEIGHT,
+    margin: float = DEFAULT_MARGIN,
+    svg_units_per_inch: float = DEFAULT_SVG_UNITS_PER_INCH,
 ) -> str:
     """Render exact shared square edges; optionally fill unused footprint."""
     if alignment not in ("seamless", "edges"):
         raise ValueError("alignment must be 'seamless' or 'edges'")
-    page_ratio(page_width, page_height)
-    page_width_units = page_width * SVG_UNITS_PER_INCH
-    page_height_units = page_height * SVG_UNITS_PER_INCH
-    margin = MARGIN_INCHES * SVG_UNITS_PER_INCH
+    page_ratio(page_width, page_height, margin)
+    if not math.isfinite(svg_units_per_inch) or svg_units_per_inch <= 0:
+        raise ValueError("SVG units per inch must be a positive finite number")
+    page_width_units = page_width * svg_units_per_inch
+    page_height_units = page_height * svg_units_per_inch
+    margin_units = margin * svg_units_per_inch
     width, height = bounds(squares)
     scale = min(
-        (page_width_units - 2 * margin) / width,
-        (page_height_units - 2 * margin) / height,
+        (page_width_units - 2 * margin_units) / width,
+        (page_height_units - 2 * margin_units) / height,
     )
     left = (page_width_units - width * scale) / 2
     top = (page_height_units - height * scale) / 2
@@ -288,6 +304,26 @@ def main() -> None:
         help="printed page height in inches (default: 9)",
     )
     parser.add_argument(
+        "--margin",
+        type=float,
+        default=DEFAULT_MARGIN,
+        help="white page margin in the same unit as width and height (default: 0.45)",
+    )
+    parser.add_argument(
+        "--svg-units-per-inch",
+        type=float,
+        default=DEFAULT_SVG_UNITS_PER_INCH,
+        help="SVG viewBox units assigned to each printed inch (default: 100)",
+    )
+    parser.add_argument(
+        "--max-iterations",
+        "--override-max-iterations",
+        dest="max_iterations",
+        type=int,
+        default=DEFAULT_MAX_ITERATIONS,
+        help="raise or lower the iteration safety limit (default: 70)",
+    )
+    parser.add_argument(
         "--labels",
         action="store_true",
         help="print Lucas numbers inside squares when legible",
@@ -300,15 +336,22 @@ def main() -> None:
     )
     args = parser.parse_args()
     try:
-        ratio = page_ratio(args.width, args.height)
+        ratio = page_ratio(args.width, args.height, args.margin)
         squares = choose_squares(
             args.iterations,
             args.layout,
             args.count_mode,
             ratio,
+            args.max_iterations,
         )
         svg = render_svg(
-            squares, args.labels, args.alignment, args.width, args.height
+            squares,
+            args.labels,
+            args.alignment,
+            args.width,
+            args.height,
+            args.margin,
+            args.svg_units_per_inch,
         )
     except ValueError as error:
         parser.error(str(error))
