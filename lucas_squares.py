@@ -1,4 +1,4 @@
-"""Compatibility facade and executable for the Lucas-square generator."""
+"""Generate printable Lucas-square arrangements as SVG, PNG, or PDF."""
 
 from lucas_squares_core import (
     DEFAULT_MARGIN,
